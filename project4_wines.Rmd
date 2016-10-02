@@ -47,7 +47,7 @@ The red wines have 1599 observations and the white wines much more with 4898, bo
 ```{r quality_variable}
 # Explore distribution of quality rating using a histograme and qq-norm plot
 qplot(reds$quality, binwidth = 1) +
-  scale_x_continuous(limits = c(0,10), breaks = seq(0, 10, 1))
+  scale_x_continuous(limits = c(2.5,8.5), breaks = seq(3, 8.5, 1))
 # qqnorm(reds$quality, ylab='Quality Rating')
 # qqline(reds$quality)
 ```
@@ -133,6 +133,16 @@ I've replotted alcohol versus quality using a boxplot, and placed quality on the
 
 I created similar boxplots for the remaining 3 variables with higher correlation values below:
 
+```{r}
+
+# make_boxplot <- function(data, y, ylabel, title){
+#   return (ggplot(data, aes(x=quality, y=y, group=quality))+
+#     xlab('Quality (1-10 scale)') +
+#     ylab(ylabel) +
+#     ggtitle(title) +
+#     geom_boxplot)
+# }
+```
 ``` {r}
 # box plots of volatile acidity, sulphates, citric acid vs. quality.
 ggplot(reds, aes(x=quality, y=volatile.acidity, group=quality)) +
@@ -256,9 +266,12 @@ How does this model do in predicting the quality of wine given these 4 chemical 
 
 ```{r}
 # generate differences in predictions and combine into a data frame
-pred_error <- data.frame(quality_err = round(predict(m3, reds) - reds$quality), type='linear model error')
-median_error <- data.frame(quality_err = median(reds$quality) - reds$quality, type = 'median model error')
-mean_error <- data.frame(quality_err = mean(reds$quality) - reds$quality, type = 'mean')
+pred_error <- data.frame(quality_err = round(predict(m3, reds) - reds$quality),
+                         type='linear model error')
+median_error <- data.frame(quality_err = median(reds$quality) - reds$quality,
+                           type = 'median model error')
+mean_error <- data.frame(quality_err = mean(reds$quality) - reds$quality, 
+                         type = 'mean')
 errors <- rbind(median_error, pred_error)
 
 #plot and compare the errors
@@ -312,17 +325,31 @@ Next, I've compared the means using t-tests on several of the variables to see w
 The boxplots below help visualize the in distribution of these variables:
 ```{r}
 #compare alcohol and fixed acidity
-ggplot(data=all, aes(x=type, y=alcohol, color=type))+
-  geom_boxplot()
+b1 <- ggplot(data=all, aes(x=type, y=alcohol, color=type))+
+  geom_boxplot() +
+  xlab("Wine Type") +
+  ylab("Alcohol Content (%)")
 
-ggplot(data=all, aes(x=type, y=volatile.acidity, color=type))+
-  geom_boxplot()
+b2 <- ggplot(data=all, aes(x=type, y=volatile.acidity, color=type))+
+  geom_boxplot() +
+  xlab("Wine Type") +
+  ylab("Volatile Acidity (g/dm^3)")
 
-ggplot(data=all, aes(x=type, y=sulphates, color=type))+
-  geom_boxplot()
+b3 <- ggplot(data=all, aes(x=type, y=sulphates, color=type))+
+  geom_boxplot() +
+  xlab("Wine Type") +
+  ylab("Sulphates (g/dm^3)")
 
-ggplot(data=all, aes(x=type, y=citric.acid, color=type))+
-  geom_boxplot()
+b4 <- ggplot(data=all, aes(x=type, y=citric.acid, color=type))+
+  geom_boxplot() + 
+  xlab("Wine Type") +
+  ylab("Citric Acid (g/dm^3)")
+
+#show all plots
+b1
+b2
+b3
+b4
 ```
 
 The boxplots shows the differences, but some are not necessarily that large. For example, the mean alcohol level for reds is 10.42% and the mean alcohol level for whites is 10.51% - very similar, but a statistically significant difference given the sample sizes.  It is suprised me that the volatile acidity and sulphate content levels have a larger difference.  I also would have expected the white wines to have a higher citric acid content in comparison to reds based on my own biased perception of whites and red wines.  The properties of reds and white wines show some differences, so I wonder if they show similar or different trends to quality as well.
@@ -335,25 +362,49 @@ White wine quality also has the strongest correlation to alcohol content and a v
 
 ```{r}
 # Compare red vs white wines linear models for several variables to quality
-ggplot(data=all, aes(x=quality, y=alcohol, color=type)) +
-  geom_point(alpha=0.2) +
-  geom_smooth(method=lm) +
-  stat_summary(fun.y = mean, geom = 'point', size=6, shape=4, alpha=1.0)
 
-ggplot(data=all, aes(x=quality, y=volatile.acidity, color=type)) +
-  geom_point(alpha=0.2) +
-  geom_smooth(method=lm) +
-  stat_summary(fun.y = mean, geom = 'point', size=6, shape=4, alpha=1.0)
+# create function to draw boxplot plots, mean markers, and linear model smooth line
+boxplot_compare <- function(var) {
+  ggplot(data=all, aes(x=factor(quality), y=all[[var]], fill=type)) +
+    geom_boxplot(alpha=0.2) +
+    geom_smooth(aes(x=quality-2, all[[var]], color=type),
+                method=lm,
+                se=FALSE,
+                size = 2) +
+    ylab(var) +
+    xlab("Quality (Scale 1-10)") +
+    stat_summary(fun.y = mean, geom = 'point', size=6, shape=4, alpha=1.0)  
+}
 
-ggplot(data=all, aes(x=quality, y=sulphates, color=type)) +
-  geom_point(alpha=0.2) +
-  geom_smooth(method=lm) +
-  stat_summary(fun.y = mean, geom = 'point', size=6, shape=4, alpha=1.0)
+# draw a plot for each of the top variables
+boxplot_compare('alcohol')
+boxplot_compare('volatile.acidity')
+boxplot_compare('sulphates')
+boxplot_compare('citric.acid')
 
-ggplot(data=all, aes(x=quality, y=citric.acid, color=type)) +
-  geom_point(alpha=0.2) +
-  geom_smooth(method=lm) + 
-  stat_summary(fun.y = mean, geom = 'point', size=6, shape=4, alpha=1.0)
+# Old code
+# ggplot(data=all, aes(x=factor(quality), y=alcohol, fill=type)) +
+#   geom_boxplot(alpha=0.2) +
+#   geom_smooth(aes(x=quality-2, alcohol, color=type),
+#               method=lm,
+#               se=FALSE,
+#               size = 2) +
+#   stat_summary(fun.y = mean, geom = 'point', size=6, shape=4, alpha=1.0)
+# 
+# ggplot(data=all, aes(x=factor(quality), y=volatile.acidity, fill=type)) +
+#   geom_boxplot(alpha=0.2) +
+#   geom_smooth(method=lm) +
+#   stat_summary(fun.y = mean, geom = 'point', size=6, shape=4, alpha=1.0)
+# 
+# ggplot(data=all, aes(x=factor(quality), y=sulphates, fill=type)) +
+#   geom_boxplot(alpha=0.2) +
+#   geom_smooth(method=lm) +
+#   stat_summary(fun.y = mean, geom = 'point', size=6, shape=4, alpha=1.0)
+# 
+# ggplot(data=all, aes(x=factor(quality), y=citric.acid, fill=type)) +
+#   geom_boxplot(alpha=0.2) +
+#   geom_smooth(method=lm) + 
+#   stat_summary(fun.y = mean, geom = 'point', size=6, shape=4, alpha=1.0)
 ```
 
 Based on these plots, alcohol and volatile acidity have similar trends for both types of wine, while sulphates and citric acid are distinctly different.  Rather, the white wines show very little correlation to the sulphates and citric acid while the red wines do.  For one of my final plots involving red and white wines, I will focus on alcohol and volatile acidity because they both show some trend.  Otherwise, there do not seem to be many similarity between red and white wines with regard to quality trends.
@@ -386,17 +437,36 @@ all$quality.f <- as.factor(all$quality)
 ```
 
 ### Plot 1:
+#### Comparison of variable distributions
+
+The first plot combines my comparison of the distributions of the top 4 variables.
+```{r}
+grid.arrange(b1 + theme(legend.position="none"),
+             b2 + theme(legend.position="none"),
+             b3 + theme(legend.position="none"),
+             b4 + theme(legend.position="none"),
+             ncol=2, top="Comparison of Variables")
+```
+
+Discussion:
+
+The boxplots show a clear difference for volatile acidity and sulphates, with white wines having lower values for both.  The median and inner quartile for alcohol content and citric acid are very similar in terms of absolute values, though the t-test earlier do indicate that they are statistically different.  For citric acid, the white wines are interesting.  They have a very small spread for most data, but then there are many outliers.  This indicates that the data itself has a rather large spread and is not particulary normally distributed.  The most interesting conculsion from this plot is that the chemical properties for red and whites can be quite different even though I'd think since they are wine made from grapes that they'd be very similar.
+
+
+### Plot 2:
 #### Highest correlated variable for quality
-##### Alcohol
 
 ```{r alcohol to quality boxplot}
-ggplot(data=all, aes(x=quality.f, y=alcohol, color=type)) +
-  geom_boxplot() +
-  ggtitle("Comparison of Alcohol to Quality Boxplots for Red/White wines") + 
-  xlab("Quality Rating (1-10)") +
-  ylab("Alcohol Content (%)")+
-  stat_summary(fun.y = mean, geom = 'point', size=4, shape=4) +
-    facet_wrap(~type)
+boxplot_compare('alcohol') +
+  ylab("Alcohol Content (% by volume)") +
+  ggtitle("Alcohol to Quality Comparison by Wine Type")
+# ggplot(data=all, aes(x=quality.f, y=alcohol, color=type)) +
+#   geom_boxplot() +
+#   ggtitle("Comparison of Alcohol to Quality Boxplots for Red/White wines") + 
+#   xlab("Quality Rating (1-10)") +
+#   ylab("Alcohol Content (%)")+
+#   stat_summary(fun.y = mean, geom = 'point', size=4, shape=4) +
+#     facet_wrap(~type)
 ```
 
 ###Discussion:
@@ -405,21 +475,25 @@ Both red and white wines show strong a trend toward higher alcohol content for t
 
 Note: Mean values are denoted with an 'X'
 
-### Plot 2
+### Plot 3
 #### Multivariate Plot for Red Wines
 ##### Combining Alcohol + Volatile Acidity to Quality
 
-By combining both alcohol and volatile acidity (the two highest correlated variables for both reds and whites) in a scatter plot, I can assign the color to the quality.  I've assigned a color palette to the quality ratings to the trends.  I removed data that had quality ratings of 3, 8, and 9 because there are few data points and they tend to make color distinction more difficult.  I also limited the x-axis to (0, 1.25) thus removing 2 outliers from the red dataset.
+By combining both alcohol and volatile acidity (the two highest correlated variables for both reds and whites) in a scatter plot, I can assign the color to the quality.  I've assigned a color palette to the quality ratings to the trends and added regression lines.  I removed data that had quality ratings of 3, 8, and 9 because there are few data points and they tend to make color distinction more difficult.  I also limited the x-axis to (0, 1.25) thus removing 2 outliers from the red dataset.
 
 ```{r multivariable plots to quality}
-# scatter plot of alcohol vs. volatile acidity colored by quality.  Quality ratings of 3, 8, 9 removed from dataset
-ggplot(data = subset(all, quality > 3 & quality < 8), aes(x=volatile.acidity, y=alcohol, color=quality.f)) +
+# scatter plot of alcohol vs. volatile acidity colored by quality. 
+# Quality ratings of 3, 8, 9 removed from dataset
+
+ggplot(data =  subset(all, quality > 3 & quality < 8), 
+       aes(x=volatile.acidity, y=alcohol, color=quality.f)) +
   scale_x_continuous(limits = c(0,1.25)) +
   scale_colour_brewer(name="Quality", palette = "Blues") +
+  geom_point(size=2, alpha=0.6) +
+  geom_smooth(method = "lm", se = FALSE, size = 2) +
   xlab("Volatile Acidity (g/dm^3)") +
   ylab("Alcohol Content (% by volume)") +
   ggtitle("Alcohol and Volatile Acidity to Quality") +
-  geom_point(size=2) +
   facet_wrap(~type)
 
 # ggplot(data = all, aes(x=volatile.acidity, y=alcohol, color=quality)) +
@@ -446,60 +520,60 @@ ggplot(data = subset(all, quality > 3 & quality < 8), aes(x=volatile.acidity, y=
 
 #### Discussion:
 
-We can see that for the red wines, the correlations between alcohol to quality and volatile acidity to quality can be combined to show a multivariate relationship.  There are more wines with quality 6 and 7 toward both the upper-left (high alcohol, low volatile acidity) portion of the plot while wines with qualites 5, 4,occupy more of the lower-right portion of the plot (low alcohol, high volatile acidity).  However, the data is spread out a lot and there are no distinct boundaries in either axis.
+We can see that for the red wines, the correlations between alcohol to quality and volatile acidity to quality can be combined to show a multivariate relationship.  There are more wines with quality 6 and 7 toward both the upper-left (high alcohol, low volatile acidity) portion of the plot while wines with qualites 5, 4,occupy more of the lower-right portion of the plot (low alcohol, high volatile acidity).  However, the data is spread out a lot and there are no distinct boundaries in either axis.  The regression lines help show separation with regard to alcohol content, but are still difficult to understand separation with regard to volatile acidity.  Because most of the data falls in the quality 5 or 6 rating, these trend lines are most representative of the dataset.  The red wines show a slightly negative slope for these two ratings.  However, the white wines show both a positive (qualty = 6) and a negative slope (quality = 5) and thus a much less clear trend for alcohol to volatile acidity. 
 
 The white wines show some separation in the vertical direction (along the Alcohol axis), but the separation along the x-axis (Volatile acidity) is not as clear.  As shown earlier, the white wines have significantly lower volatile acidity on average.  There is likely a threshold in volate acidity that begins to turn a wine bad (perhaps around 0.7 or 0.8 g/dm^3), and the white wines simply do not cross this threshold as frequency as the reds.
 
 While the scatterplots themselves do not show any clear trends, it is interesting to see a slight separation of wine qualities when colored by quality.  Particularly for the red wines, the high quality wines tend to have higher alcohol content and lower volatile acidity.  For white wines, the trends are not as visible, particularly for volatile acidity.
 
-### Plot 3
-#### Multivariate correlations among chemical properties
-##### Fixed Acidity + Citric Acid to pH
+<!-- <!-- ### Plot 3 -->
+<!-- <!-- #### Multivariate correlations among chemical properties --> 
+<!-- <!-- ##### Fixed Acidity + Citric Acid to pH --> 
 
-<!-- After scanning through the cross-correlations between variables for the red wines, one that struck me was that fixed.acidity, citric.acid, and pH all had relatively strong correlations among the 3 variables. -->
+<!-- <!-- After scanning through the cross-correlations between variables for the red wines, one that struck me was that fixed.acidity, citric.acid, and pH all had relatively strong correlations among the 3 variables. --> 
 
- ```{r multivariable to pH}
-# ggplot(data = all, aes(x=fixed.acidity, y=citric.acid, color=pH)) +
-#   geom_point(alpha=1.0) +
-#   scale_y_continuous(limits=c(0,0.8)) +
-#   scale_x_continuous(limits=c(4, 12)) +
-#   xlab("Fixed Acidity (g/dm^3)") +
-#   ylab("Citric Acid (g/dm^3)") + 
-#   ggtitle("Fixed Acidity and Citric Acid to pH") +
-#   geom_jitter() +
-#   scale_colour_gradient(low="blue", high="red") +
-#   facet_wrap(~type)
- ```
+<!--  ```{r multivariable to pH} -->
+<!-- # ggplot(data = all, aes(x=fixed.acidity, y=citric.acid, color=pH)) + -->
+<!-- #   geom_point(alpha=1.0) + -->
+<!-- #   scale_y_continuous(limits=c(0,0.8)) + -->
+<!-- #   scale_x_continuous(limits=c(4, 12)) + -->
+<!-- #   xlab("Fixed Acidity (g/dm^3)") + -->
+<!-- #   ylab("Citric Acid (g/dm^3)") +  -->
+<!-- #   ggtitle("Fixed Acidity and Citric Acid to pH") + -->
+<!-- #   geom_jitter() + -->
+<!-- #   scale_colour_gradient(low="blue", high="red") + -->
+<!-- #   facet_wrap(~type) -->
+<!--  ``` -->
+
+<!-- <!-- #### Discussion: --> 
+
+<!-- <!-- The plots reveal that for both red and white wines the fixed acidity and citric acidity are both inversely correlated to the pH.  The bottom-left portions of the plots reflect higher pH levels, and the top-right reflect lower pH levels.   This makes sense because citric acid is a subset of the fixed acid, and pH is related to the acidity (high acidity means lower pH).  Therefore, these chemical properties are all by definition related to each other, and this relation shows in the wines. --> 
+
+<!-- Another interesting set of correlations among chemical properties are between residual sugar, alcohol level, and density.  The following compares these 3 properties between red and white wines.  -->
+
+<!-- ##### Residual Sugar + Alcohol to Density -->
+
+<!-- ```{r} -->
+<!-- ggplot(data = all, aes(x=residual.sugar, y=alcohol, color=density)) + -->
+<!--   geom_point(alpha=1.0) + -->
+<!--   scale_x_continuous(limits=c(0,20)) +  -->
+<!--   xlab("Residual Sugar (g/dm^3)") + -->
+<!--   ylab("Alcohol (% by volume)") +  -->
+<!--   ggtitle("Alcohol + Residual Sugar to Density") + -->
+<!--   geom_jitter() + -->
+<!--   scale_colour_gradient(limits=c(0.985, 1.005),low="blue", high="red") + -->
+<!--   facet_wrap(~type) -->
+<!-- ``` -->
+
+<!-- Note: The color scale for density is limited to 1.005 which cuts off a single outlier around 1.04 and the residual sugar is limited to 20 which removes a few data points. -->
 
 <!-- #### Discussion: -->
 
-<!-- The plots reveal that for both red and white wines the fixed acidity and citric acidity are both inversely correlated to the pH.  The bottom-left portions of the plots reflect higher pH levels, and the top-right reflect lower pH levels.   This makes sense because citric acid is a subset of the fixed acid, and pH is related to the acidity (high acidity means lower pH).  Therefore, these chemical properties are all by definition related to each other, and this relation shows in the wines. -->
+<!-- The first thing that sticks out is that white wines have a much larger variation in residual sugar.  The sweetness of white wines can have a much larger variation than red wines which tend to all be less sweet.  -->
 
-Another interesting set of correlations among chemical properties are between residual sugar, alcohol level, and density.  The following compares these 3 properties between red and white wines. 
+<!-- Both reds and whites do shows an inverse relationship between alcohol and density.  Alcohol is less dense than water, if all other content is equal then more alcohol would mean less water and an overall smaller density.  Of course, there is much more content to wine than alcohol and water, and this likely accounts for the variation in densities among the wines of similar alcohol and residual sugar content.   -->
 
-##### Residual Sugar + Alcohol to Density
-
-```{r}
-ggplot(data = all, aes(x=residual.sugar, y=alcohol, color=density)) +
-  geom_point(alpha=1.0) +
-  scale_x_continuous(limits=c(0,20)) + 
-  xlab("Residual Sugar (g/dm^3)") +
-  ylab("Alcohol (% by volume)") + 
-  ggtitle("Alcohol + Residual Sugar to Density") +
-  geom_jitter() +
-  scale_colour_gradient(limits=c(0.985, 1.005),low="blue", high="red") +
-  facet_wrap(~type)
-```
-
-Note: The color scale for density is limited to 1.005 which cuts off a single outlier around 1.04 and the residual sugar is limited to 20 which removes a few data points.
-
-#### Discussion:
-
-The first thing that sticks out is that white wines have a much larger variation in residual sugar.  The sweetness of white wines can have a much larger variation than red wines which tend to all be less sweet. 
-
-Both reds and whites do shows an inverse relationship between alcohol and density.  Alcohol is less dense than water, if all other content is equal then more alcohol would mean less water and an overall smaller density.  Of course, there is much more content to wine than alcohol and water, and this likely accounts for the variation in densities among the wines of similar alcohol and residual sugar content.  
-
-Also, because the white wines have more data points, the other relationships in this case are easier to see.  Wines with higher sugar content tned to have less alcohol and higher density.  A plausible explanation for this is likely due to the fermentation process of wine. The residual sugar is what sugar is left over from the grapes after the fermentation process has completed.  Therefore, there may have been less conversion to alcohol.  This assumes that the initial sugar concentration was relatively equal for all grapes.  To confirm any type or causation would require a controlled experiment with the same initial amount of sugar and alcohol content before fermentation begins.
+<!-- Also, because the white wines have more data points, the other relationships in this case are easier to see.  Wines with higher sugar content tned to have less alcohol and higher density.  A plausible explanation for this is likely due to the fermentation process of wine. The residual sugar is what sugar is left over from the grapes after the fermentation process has completed.  Therefore, there may have been less conversion to alcohol.  This assumes that the initial sugar concentration was relatively equal for all grapes.  To confirm any type or causation would require a controlled experiment with the same initial amount of sugar and alcohol content before fermentation begins. -->
 
 ## Reflections
 I explored both red wine and white wine datasets to find any interesting trends with quality and to compare trends between red and white wines.  Most variables for the red wines are normally distributed though some were long-tailed. After finding correlations to quality within the red wine dataset, I limited most analysis to these variables (alcohol, volatile acidity, sulphates, and citric acid).  The white wines have noticeably lower values of volatile acidity and sulphates, while alcohol and citric acid were more similar (though statistically different).  I'd like to investigate further why white wines tend to have less volatile acidity and sulphates.  Because I limited my analysis mostly to these 4 variables, there are likely other interesting discoveries among the other variables that could be further explored.
@@ -517,3 +591,4 @@ Both datasets shows large spreads in their values for each quality rating and ma
 nrow(subset(all, quality >= 5 & quality <= 6)) / nrow(all)
 ```
 Another difficulty with this dataset was the limited quality ratings.  Over 75% of the data had a rating of either 5 or 6.  It would useful to have a dataset that either uses a larger rating (perhaps 0 -100) scale, or find a dataset that includes more of the extreme quality ratings.
+
