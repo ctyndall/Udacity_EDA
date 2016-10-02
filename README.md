@@ -1,7 +1,9 @@
 ## Exploratory Data Analysis on the Vinho Verde Wines Datasets
 
 This is my analysis of both the red and white wines found in the Vinho Verde Wines datasets.
-Information about the dataset is found in the winQualityInfo.txt file.
+Information about the dataset is found in the wineQualityInfo.txt file.
+
+
 
 
 
